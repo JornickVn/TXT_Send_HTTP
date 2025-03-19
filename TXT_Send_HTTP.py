@@ -1,5 +1,4 @@
 import requests
-import os
 import hashlib
 
 class TXT_Send_HTTP:
@@ -7,41 +6,32 @@ class TXT_Send_HTTP:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "txt_file": ("STRING", {"default": "./transcription.txt"}),  # Path to the TXT file
+                "txt_content": ("STRING", {"default": "This is the transcription text."}),  # Raw text input
                 "url": ("STRING", {"default": "https://your-backend.com/upload"}),  # Backend URL
                 "method_type": (["post", "put"], {"default": "post"})  # No PATCH for binary data
             }
         }
 
-    RETURN_TYPES = ("INT", "STRING", "STRING", "STRING")  # status_code, response_text, debug_file_path, debug_info
-    RETURN_NAMES = ("status_code", "result_text", "debug_file_path", "debug_info")
-    FUNCTION = "send_txt_file"
+    RETURN_TYPES = ("INT", "STRING", "STRING")  # status_code, response_text, debug_info
+    RETURN_NAMES = ("status_code", "result_text", "debug_info")
+    FUNCTION = "send_txt_content"
     OUTPUT_NODE = True
     CATEGORY = "Jornick"
 
-    def send_txt_file(self, txt_file, url, method_type="post"):
+    def send_txt_content(self, txt_content, url, method_type="post"):
         """
-        Sends the TXT file as raw text data.
+        Sends the transcription text directly as raw text data.
         """
-        if not os.path.exists(txt_file):
-            error_text = f"File not found: {txt_file}"
+        if not txt_content:
+            error_text = "Error: No transcription text provided."
             print(error_text)
-            return (0, error_text, txt_file, error_text)
+            return (0, error_text, "No text provided")
 
-        try:
-            with open(txt_file, "r", encoding="utf-8") as f:
-                file_content = f.read()
-        except Exception as e:
-            error_text = f"Failed to open TXT file at {txt_file}: {str(e)}"
-            print(error_text)
-            return (0, error_text, txt_file, error_text)
-
-        file_size = len(file_content.encode("utf-8"))  # Convert to bytes for accurate size measurement
-        file_hash = hashlib.sha256(file_content.encode("utf-8")).hexdigest()
+        text_size = len(txt_content.encode("utf-8"))  # Convert to bytes for size measurement
+        text_hash = hashlib.sha256(txt_content.encode("utf-8")).hexdigest()
 
         headers = {
-            "Content-Type": "text/plain",  # Sending plain text
-            "X-File-Name": os.path.basename(txt_file)  # Send filename as a header
+            "Content-Type": "text/plain"  # Sending plain text
         }
 
         try:
@@ -49,16 +39,15 @@ class TXT_Send_HTTP:
                 method=method_type.upper(),
                 url=url,
                 headers=headers,
-                data=file_content  # Sending raw text data
+                data=txt_content  # Sending the raw transcription text
             )
         except Exception as e:
             error_text = f"HTTP request failed: {str(e)}"
             print(error_text)
-            return (0, error_text, txt_file, f"File size: {file_size} bytes, SHA256: {file_hash}")
+            return (0, error_text, f"Text size: {text_size} bytes, SHA256: {text_hash}")
 
-        print(f"[TXT_Send_HTTP] File sent: HTTP {response.status_code}")
-        return (response.status_code, response.text, txt_file, f"File size: {file_size} bytes, SHA256: {file_hash}")
-
+        print(f"[TXT_Send_HTTP] Transcription sent: HTTP {response.status_code}")
+        return (response.status_code, response.text, f"Text size: {text_size} bytes, SHA256: {text_hash}")
 
 NODE_CLASS_MAPPINGS = {
     "TXT_Send_HTTP": TXT_Send_HTTP
